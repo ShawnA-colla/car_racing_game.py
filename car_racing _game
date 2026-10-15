@@ -1,0 +1,304 @@
+from ursina import *
+import math
+
+app = Ursina()
+running_sound = Audio(
+    "car_sound.mp3",
+    loop=True,
+    autoplay=False,
+    volume=0.3
+)
+engine_sound=Audio(
+    "car.mp3",
+    loop=True,
+    autoplay=True,
+    volume=1
+)
+car_crash=Audio(
+    "crash.mp3",
+    loop=False,
+    autoplay=False,
+    volume=1
+)
+
+player = Entity(
+    model="cube",
+    scale=(1,1,2),
+    y=0,
+    x=27,
+    color=color.blue,
+    collider="box"
+)
+
+ai = Entity(
+    model="cube",
+    scale=(1,1,2),
+    y=0,
+    x=23,
+    color=color.red,
+    collider="box"
+)
+
+Sky()
+
+TRACK_RADIUS = 25
+INNER_RADIUS = 21.5
+OUTER_RADIUS = 28.5
+MAX_LAPS = 3
+
+acceleration = 5
+brake = 5
+friction = 2
+max_speed = 50
+player_speed = 0
+player_angle = 0
+player_lap=0
+player_radius = 27
+ai_speed = 0
+ai_angle = 0
+ai_radius = 23
+
+
+land = Entity(
+    model="plane",
+    scale=(100,0.5,100),
+    color=color.green,
+    texture="grass"
+)
+message_text=Text(
+    text="",
+    position=(-0.15,0,0),
+    scale=(2,2,2)
+)
+player_lap_text=Text(
+    text="Player Lap : 0 / 3",
+    x=-0.85,
+    y=0.45,
+    scale=1.5
+) 
+ai_lap_text=Text(
+    text="Computer Lap : 0 / 3",
+    x=-0.85,
+    y=0.40,
+    scale=1.5
+)
+speed_text=Text(
+    text="Speed:0",
+    x=-0.85,
+    y=0.35,
+    scale=1.5)
+position_text=Text(
+    text="position : 1 /2",
+    x=-0.85,
+    y=0.30,
+    scale=1.5
+)
+number_of_segments = 100
+
+
+for i in range(number_of_segments):
+    angle = i * (360 / number_of_segments)
+    rad = math.radians(angle)
+    x = math.cos(rad) * TRACK_RADIUS
+    z = math.sin(rad) * TRACK_RADIUS
+    Entity(model="cube",            
+           color=color.gray,
+           scale=(7, 0.15, 4),
+           position=(x, 0.05, z),
+           rotation_y=-angle)
+
+for i in range(number_of_segments):
+    angle = i * (360 / number_of_segments)
+    rad = math.radians(angle)
+    x = math.cos(rad) * INNER_RADIUS
+    z = math.sin(rad) * INNER_RADIUS
+    Entity(model="cube", 
+           color=color.yellow, 
+           scale=(0.5, 0.4, 3.5), 
+           position=(x, 0.25, z), 
+           rotation_y=-angle)
+
+for i in range(number_of_segments):
+    angle = i * (360 / number_of_segments)
+    rad = math.radians(angle)
+    x = math.cos(rad) * OUTER_RADIUS
+    z = math.sin(rad) * OUTER_RADIUS
+    Entity(model="cube", 
+           color=color.yellow, 
+           scale=(0.5, 0.4, 3.5), 
+           position=(x, 0.25, z), 
+           rotation_y=-angle)
+
+for i in range(5, number_of_segments, 5):
+    angle = i * (360 / number_of_segments)
+    rad = math.radians(angle)
+    x = math.cos(rad) * TRACK_RADIUS
+    z = math.sin(rad) * TRACK_RADIUS
+    Entity(model="cube", 
+           color=color.white, 
+           scale=(0.2, 0.2, 2), 
+           position=(x, 0.15, z), 
+           rotation_y=-angle)
+
+start_or_finish_line = Entity(
+    model="cube",
+    color=color.yellow,
+    scale=(7, 0.1, 1),
+    position=(25, 0.15, 0)
+)
+
+for i in range(0, 360, 20):
+    rad = math.radians(i)
+    x = math.cos(rad) * 36
+    z = math.sin(rad) * 36
+    Entity(model="cube",
+          color=color.brown, 
+          scale=(0.6, 3, 0.6), 
+          position=(x, 1.5, z))
+    Entity(model="sphere", 
+           color=color.rgb(0, 255, 0), 
+           scale=(3, 3, 3), 
+           position=(x, 3.5, z))
+
+for i in range(0, 360, 20):
+    rad = math.radians(i)
+    x = math.cos(rad) * 46
+    z = math.sin(rad) * 46
+    Entity(model="cube", 
+           color=color.blue, 
+           scale=(2, 5, 1), 
+           position=(x, 2.5, z), 
+           rotation_y=90)
+
+def update_player_position():
+    rad = math.radians(player_angle)
+    player.x = math.cos(rad) * player_radius
+    player.z = math.sin(rad) * player_radius
+    player.rotation_y = -player_angle
+
+
+def update_ai_position():
+    rad = math.radians(ai_angle)
+    ai.x = math.cos(rad) * ai_radius
+    ai.z = math.sin(rad) * ai_radius
+    ai.rotation_y = -ai_angle
+
+def update_player_lap():
+    global player_lap
+    player_lap=int(player_angle//360)
+    if player_lap>MAX_LAPS:
+        player_lap = MAX_LAPS
+    player_lap_text.text=(f"Player Lap:{player_lap}/{MAX_LAPS}")
+
+def update_ai_lap():
+    global ai_lap
+    ai_lap=int(ai_angle//360)
+    if ai_lap>MAX_LAPS:
+        ai_lap = MAX_LAPS
+    ai_lap_text.text=(f"Computer Lap:{ai_lap}/{MAX_LAPS}")
+def update_race_position():
+    player_progress=player_angle
+    ai_progress=ai_angle
+    if player_progress>=ai_progress:
+        position_text.text="position : 1 / 2"
+    else:
+        position_text.text="position : 2 / 2"
+obstacle_data=[
+    (60,28),
+    (120,22),
+    (180,28),
+    (240,22),
+    (300,28)
+]
+
+obstacles=[]
+for angle, radius in obstacle_data:
+    rad = math.radians(angle)
+
+    x=math.cos(rad)*radius
+    z=math.sin(rad)*radius
+
+    obstacle=Entity(
+        model="cube",
+        color=color.black,
+        scale=(1.2,1,1.2),
+        position=(x,0.6,z),
+        collider="box"
+    )
+    obstacles.append(obstacle)
+race_over=False
+
+def update():
+    global player_speed, max_speed, acceleration, brake, friction, player_radius, player_angle, ai_speed, ai_angle, ai_radius, race_over
+    if race_over:
+        return
+    ai_speed += 3 * time.dt
+    if ai_speed > max_speed:
+        ai_speed = max_speed
+
+    if ai_speed > 0:
+        ai_angle += ai_speed * 3 * time.dt
+
+    if held_keys["up arrow"]:
+        player_speed += acceleration * time.dt            
+        if player_speed > max_speed:
+            player_speed = max_speed
+
+    elif held_keys["down arrow"]:
+        player_speed -= brake * time.dt
+        if player_speed < 0:
+            player_speed = 0
+    else:
+        if player_speed > 0:
+            player_speed -= friction * time.dt
+            if player_speed < 0:
+                player_speed = 0
+
+    if player_speed > 0 and not running_sound.playing:
+        running_sound.play()
+    elif player_speed <= 0 and running_sound.playing:
+        running_sound.stop()
+
+    if player_speed > 0:
+        player_angle += player_speed * 3 * time.dt
+
+    if held_keys["left arrow"]:
+        player_radius -= 5 * time.dt
+    if held_keys["right arrow"]:
+        player_radius += 5 * time.dt
+        
+
+    player_radius = max(INNER_RADIUS + 0.5, min(player_radius, OUTER_RADIUS - 0.5))
+
+    update_player_position()
+    update_ai_position()
+    update_player_lap()
+    update_ai_lap()
+    update_race_position()
+    speed_text.text = f"Speed:{int(player_speed)}"
+
+    
+    
+    for obstacle in obstacles:
+        if player.intersects(obstacle).hit:
+            if running_sound.playing:
+                running_sound.stop()
+            if engine_sound.playing:
+                engine_sound.stop()
+            car_crash.play()
+            message_text.text="Game Over!"
+            race_over=True
+            return
+    if player_lap == 3 and ai_lap<3:
+        message_text.text="You Win!"
+        race_over=True
+        running_sound.stop()
+        engine_sound.stop()
+    if ai_lap == 3 and player_lap < 3:
+        message_text.text="You Lose!"
+        race_over=True
+        running_sound.stop()
+        engine_sound.stop()
+camera.position = (0, 100, -150)
+camera.look_at(land)
+app.run()
